@@ -69,6 +69,12 @@ vim.opt.rtp:prepend(lazypath)
 require('lazy').setup({
   -- NOTE: First, some plugins that don't require any configuration
 
+  -- Mappings for enabling and disabling 'spell', 'wordwrap' e.t.c.
+  'tpope/vim-unimpaired',
+
+  -- grep inside the nvim
+  'mhinz/vim-grepper',
+
   -- Git related plugins
   'tpope/vim-fugitive',
   -- 'tpope/vim-rhubarb',
@@ -113,7 +119,6 @@ require('lazy').setup({
 
   -- Useful plugin to show you pending keybinds.
   { 'folke/which-key.nvim', opts = {} },
-  --[[
   {
     -- Adds git related signs to the gutter, as well as utilities for managing changes
     'lewis6991/gitsigns.nvim',
@@ -152,9 +157,7 @@ require('lazy').setup({
       end,
     },
   },
-  --]]
 
-  --[[
   {
     -- Theme inspired by Atom
     'navarasu/onedark.nvim',
@@ -163,9 +166,7 @@ require('lazy').setup({
       vim.cmd.colorscheme 'onedark'
     end,
   },
-  --]]
 
-  --[[
   {
     -- Set lualine as statusline
     'nvim-lualine/lualine.nvim',
@@ -179,7 +180,6 @@ require('lazy').setup({
       },
     },
   },
-  --]]
 
   --[[
   {
@@ -264,8 +264,95 @@ vim.o.completeopt = 'menuone,noselect'
 -- NOTE: You should make sure your terminal supports this
 vim.o.termguicolors = true
 
--- [[ Basic Keymaps ]]
+-- Disable word wrap
+vim.o.wrap = false
 
+-- Disable mouse
+vim.o.mouse = ''
+
+-- Make sure that unsaved buffers that are to be put in the background are
+-- allowed to go in there (i.e the 'must save first' error doesn't comes up )
+vim.o.hidden = true
+
+-- Move the cursor into invalid regions in all the modes
+vim.cmd([[set ve=all]])
+
+-- Define a function to run Vimscript code
+local function run_vimscript(vimscript_code)
+	vim.api.nvim_exec(vimscript_code, false)
+end
+-- Define vim settings
+run_vimscript([[
+" cd to the directory containing the file in the buffer
+nmap <silent> \cd :lcd %:h<CR>
+
+" Shortcut to mute highliting
+nnoremap <silent> <C-c> :<C-u>nohlsearch<CR><C-l>
+
+" Set text wrapping toggles
+nmap <silent> \w :setlocal invwrap<CR>:set wrap?<CR>:setlocal invnumber<CR>
+
+" Make horizontal scrolling easier
+nmap <silent> <C-l> 10zl
+nmap <silent> <C-h> 10zh
+
+" Redifine commands during typo errors
+:command WQ wq
+:command Wq wq
+:command W w
+:command Q q
+:command Qa qa
+:command QA qa
+
+" GREPPER Start
+let g:grepper       = {}
+let g:grepper.tools = ['rg', 'git']
+
+" Search for the current word
+nnoremap \* :Grepper -cword -noprompt<CR>
+
+" Search for the current selection
+nmap gs <plug>(GrepperOperator)
+xmap gs <plug>(GrepperOperator)
+
+" Open Grepper-prompt for a particular grep-alike tool
+nnoremap \g :Grepper -tool git<CR>
+nnoremap \G :Grepper -tool rg<CR>
+
+function! SetupCommandAlias(input, output)
+  exec 'cabbrev <expr> '.a:input
+        \ .' ((getcmdtype() is# ":" && getcmdline() is# "'.a:input.'")'
+        \ .'? ("'.a:output.'") : ("'.a:input.'"))'
+endfunction
+call SetupCommandAlias("rg", "GrepperRg")
+
+" GREPPER End
+" Highlight all instances of current word under the cursor
+nmap <silent> \^ :setl hls<CR>:let @/="<C-r><C-w>" <CR>
+
+" Easy expansion of active file directory
+cnoremap %% <C-R>=fnameescape(expand('%:h')).'/'<cr>
+map \ew :e %%
+
+" Repeat the last subsitution in Normal and visual mode
+nnoremap & :&&<CR>
+xnoremap & :&&<CR>
+
+" Restore cursor to file position in previous editing session
+function! ResCur()
+  if line("'\"") <= line("$")
+    normal! g`"
+    return 1
+  endif
+endfunction
+
+augroup resCur
+  autocmd!
+  autocmd BufWinEnter * call ResCur()
+augroup END
+]])
+
+-- [[ Basic Keymaps ]]
 -- Keymaps for better default experience
 -- See `:help vim.keymap.set()`
 vim.keymap.set({ 'n', 'v' }, '<Space>', '<Nop>', { silent = true })
@@ -346,6 +433,7 @@ vim.api.nvim_create_user_command('LiveGrepGitRoot', live_grep_git_root, {})
 -- See `:help telescope.builtin`
 vim.keymap.set('n', '<leader>?', require('telescope.builtin').oldfiles, { desc = '[?] Find recently opened files' })
 vim.keymap.set('n', '<leader><space>', require('telescope.builtin').buffers, { desc = '[ ] Find existing buffers' })
+vim.keymap.set('n', '<C-g><C-b>', require('telescope.builtin').buffers, { desc = '[ ] Find existing buffers' })
 vim.keymap.set('n', '<leader>/', function()
   -- You can pass additional configuration to telescope to change theme, layout, etc.
   require('telescope.builtin').current_buffer_fuzzy_find(require('telescope.themes').get_dropdown {
@@ -404,20 +492,20 @@ vim.defer_fn(function()
         enable = true,
         set_jumps = true, -- whether to set jumps in the jumplist
         goto_next_start = {
-          [']m'] = '@function.outer',
-          [']]'] = '@class.outer',
+          [']]'] = '@function.outer',
+          [']m'] = '@class.outer',
         },
         goto_next_end = {
-          [']M'] = '@function.outer',
-          [']['] = '@class.outer',
+          [']['] = '@function.outer',
+          [']M'] = '@class.outer',
         },
         goto_previous_start = {
-          ['[m'] = '@function.outer',
-          ['[['] = '@class.outer',
+          ['[['] = '@function.outer',
+          ['[m'] = '@class.outer',
         },
         goto_previous_end = {
-          ['[M'] = '@function.outer',
-          ['[]'] = '@class.outer',
+          ['[]'] = '@function.outer',
+          ['[M'] = '@class.outer',
         },
       },
       swap = {
@@ -435,7 +523,7 @@ end, 0)
 
 -- [[ Configure LSP ]]
 --  This function gets run when an LSP connects to a particular buffer.
-local on_attach = function(_, bufnr)
+local on_attach = function(client, bufnr)
   -- NOTE: Remember that lua is a real programming language, and as such it is possible
   -- to define small helper and utility functions so you don't have to repeat yourself
   -- many times.
@@ -476,6 +564,10 @@ local on_attach = function(_, bufnr)
   vim.api.nvim_buf_create_user_command(bufnr, 'Format', function(_)
     vim.lsp.buf.format()
   end, { desc = 'Format current buffer with LSP' })
+
+  client.server_capabilities.semanticTokensProvider = nil
+  -- use ctags when CTRL-] key is pressed though the LSP is attached.
+  vim.o.tagfunc = ""
 end
 
 -- document existing key chains
